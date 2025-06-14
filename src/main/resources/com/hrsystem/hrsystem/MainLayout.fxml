@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+
+<TabPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" tabClosingPolicy="UNAVAILABLE" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1">
+    <tabs>
+        <Tab text="Dashboard">
+            <content>
+                <fx:include source="Dashboard.fxml" />
+            </content>
+        </Tab>
+        <Tab text="Manage Employees">
+            <content>
+                <fx:include source="Employee.fxml" />
+            </content>
+        </Tab>
+    </tabs>
+</TabPane>
