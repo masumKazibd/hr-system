@@ -14,5 +14,10 @@
                 <fx:include source="Employee.fxml" />
             </content>
         </Tab>
+        <Tab text="Manage Departments">
+            <content>
+                <fx:include source="Department.fxml" />
+            </content>
+        </Tab>
     </tabs>
 </TabPane>
