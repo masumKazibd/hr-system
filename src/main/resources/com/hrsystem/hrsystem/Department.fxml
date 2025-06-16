@@ -18,7 +18,7 @@
                 <TableColumn fx:id="nameColumn" prefWidth="350.0" text="Department Name" />
             </columns>
         </TableView>
-        <VBox layoutX="500.0" layoutY="200.0" prefHeight="100.0" prefWidth="275.0" spacing="10.0">
+        <VBox layoutX="500.0" layoutY="175.0" prefHeight="150.0" prefWidth="275.0" spacing="10.0">
             <children>
                 <Label text="Department Details">
                     <font>
@@ -27,7 +27,14 @@
                 </Label>
                 <Label text="Name:" />
                 <TextField fx:id="nameField" />
-                <Button onAction="#handleAddDepartment" prefHeight="30.0" prefWidth="275.0" text="Add Department" />
+                <Button fx:id="addButton" onAction="#handleAddDepartment" prefHeight="30.0" prefWidth="275.0" text="Add Department" />
+                <HBox prefHeight="30.0" prefWidth="275.0" spacing="10.0">
+                    <children>
+                        <Button onAction="#handleUpdateDepartment" prefHeight="30.0" prefWidth="132.0" text="Update Department" />
+                        <Button onAction="#handleDeleteDepartment" prefHeight="30.0" prefWidth="133.0" text="Delete Department" />
+                    </children>
+                </HBox>
+                <Button onAction="#clearFields" prefHeight="30.0" prefWidth="275.0" text="Clear Selection" />
             </children>
         </VBox>
     </children>
