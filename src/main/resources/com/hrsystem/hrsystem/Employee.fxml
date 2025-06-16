@@ -11,6 +11,7 @@
 
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
 <AnchorPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.hrsystem.hrsystem.controller.EmployeeController">
     <children>
         <TableView fx:id="employeeTable" layoutX="25.0" layoutY="25.0" prefHeight="550.0" prefWidth="450.0">
@@ -21,19 +22,17 @@
                 <TableColumn fx:id="salaryColumn" prefWidth="100.0" text="Salary" />
             </columns>
         </TableView>
-        <VBox layoutX="500.0" layoutY="125.0" prefHeight="250.0" prefWidth="275.0" spacing="10.0">
+        <VBox layoutX="500.0" layoutY="100.0" prefHeight="300.0" prefWidth="275.0" spacing="10.0">
             <children>
-                <Label text="Employee Details">
-                    <font>
-                        <Font name="System Bold" size="18.0" />
-                    </font>
-                </Label>
+                <Label text="Employee Details"> <font> <Font name="System Bold" size="18.0" /> </font> </Label>
                 <Label text="Name:" />
                 <TextField fx:id="nameField" />
                 <Label text="Department:" />
                 <ComboBox fx:id="departmentComboBox" prefWidth="275.0" />
                 <Label text="Salary:" />
                 <TextField fx:id="salaryField" />
+                <Label text="Joining Date:" />
+                <DatePicker fx:id="joinDatePicker" prefWidth="275.0" />
                 <Button fx:id="addButton" onAction="#handleAddEmployee" prefHeight="30.0" prefWidth="275.0" text="Add Employee" />
                 <HBox prefHeight="30.0" prefWidth="275.0" spacing="10.0">
                     <children>

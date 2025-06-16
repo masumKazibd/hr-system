@@ -6,39 +6,28 @@ import com.hrsystem.hrsystem.util.Database;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 
 public class EmployeeController {
 
-    @FXML
-    private TableView<Employee> employeeTable;
-    @FXML
-    private TableColumn<Employee, Integer> idColumn;
-    @FXML
-    private TableColumn<Employee, String> nameColumn;
-    @FXML
-    private TableColumn<Employee, String> departmentColumn;
-    @FXML
-    private TableColumn<Employee, Double> salaryColumn;
-
-    @FXML
-    private TextField nameField;
-    @FXML
-    private ComboBox<Department> departmentComboBox;
-    @FXML
-    private TextField salaryField;
-    @FXML
-    private Button addButton;
+    @FXML private TableView<Employee> employeeTable;
+    @FXML private TableColumn<Employee, Integer> idColumn;
+    @FXML private TableColumn<Employee, String> nameColumn;
+    @FXML private TableColumn<Employee, String> departmentColumn;
+    @FXML private TableColumn<Employee, Double> salaryColumn;
+    @FXML private TextField nameField;
+    @FXML private ComboBox<Department> departmentComboBox;
+    @FXML private TextField salaryField;
+    @FXML private DatePicker joinDatePicker; // New UI element
+    @FXML private Button addButton;
 
     private ObservableList<Employee> employeeList = FXCollections.observableArrayList();
     private ObservableList<Department> departmentList = FXCollections.observableArrayList();
@@ -46,6 +35,7 @@ public class EmployeeController {
 
     @FXML
     public void initialize() {
+        // Setup columns and listeners...
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         departmentColumn.setCellValueFactory(new PropertyValueFactory<>("department"));
@@ -53,11 +43,89 @@ public class EmployeeController {
 
         loadDepartmentData();
         departmentComboBox.setItems(departmentList);
-
         loadEmployeeData();
 
         employeeTable.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> showEmployeeDetails(newValue));
+                (obs, oldVal, newVal) -> showEmployeeDetails(newVal));
+    }
+
+    private void loadEmployeeData() {
+        employeeList.clear();
+        String query = "SELECT * FROM employees ORDER BY id";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(query);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                // Handle null dates from database
+                Date joinSqlDate = rs.getDate("join_date");
+                LocalDate joinLocalDate = (joinSqlDate != null) ? joinSqlDate.toLocalDate() : null;
+
+                employeeList.add(new Employee(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("department"),
+                        rs.getDouble("salary"),
+                        joinLocalDate
+                ));
+            }
+            employeeTable.setItems(employeeList);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void showEmployeeDetails(Employee employee) {
+        selectedEmployee = employee;
+        if (employee != null) {
+            nameField.setText(employee.getName());
+            salaryField.setText(String.valueOf(employee.getSalary()));
+            joinDatePicker.setValue(employee.getJoinDate());
+            for (Department d : departmentComboBox.getItems()) {
+                if (d.getName().equals(employee.getDepartment())) {
+                    departmentComboBox.setValue(d);
+                    break;
+                }
+            }
+            addButton.setDisable(true);
+        } else {
+            clearFields();
+        }
+    }
+
+    @FXML
+    private void handleAddEmployee() {
+        if (!validateInput()) return;
+
+        String sql = "INSERT INTO employees(name, department, salary, join_date) VALUES(?,?,?,?)";
+        try (Connection conn = Database.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, nameField.getText());
+            pstmt.setString(2, departmentComboBox.getValue().getName());
+            pstmt.setDouble(3, Double.parseDouble(salaryField.getText()));
+            pstmt.setDate(4, Date.valueOf(joinDatePicker.getValue()));
+            pstmt.executeUpdate();
+
+            loadEmployeeData();
+            clearFields();
+        } catch (SQLException | NumberFormatException e) { e.printStackTrace(); }
+    }
+
+    @FXML
+    private void handleUpdateEmployee() {
+        if (selectedEmployee == null || !validateInput()) return;
+
+        String sql = "UPDATE employees SET name = ?, department = ?, salary = ?, join_date = ? WHERE id = ?";
+        try (Connection conn = Database.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, nameField.getText());
+            pstmt.setString(2, departmentComboBox.getValue().getName());
+            pstmt.setDouble(3, Double.parseDouble(salaryField.getText()));
+            pstmt.setDate(4, Date.valueOf(joinDatePicker.getValue()));
+            pstmt.setInt(5, selectedEmployee.getId());
+            pstmt.executeUpdate();
+
+            loadEmployeeData();
+            clearFields();
+        } catch (SQLException | NumberFormatException e) { e.printStackTrace(); }
     }
 
     private void loadDepartmentData() {
@@ -78,90 +146,6 @@ public class EmployeeController {
         }
     }
 
-    private void loadEmployeeData() {
-        employeeList.clear();
-        String query = "SELECT * FROM employees ORDER BY id";
-        try (Connection conn = Database.getConnection();
-             PreparedStatement preparedStatement = conn.prepareStatement(query);
-             ResultSet resultSet = preparedStatement.executeQuery()) {
-
-            while (resultSet.next()) {
-                employeeList.add(new Employee(
-                        resultSet.getInt("id"),
-                        resultSet.getString("name"),
-                        resultSet.getString("department"),
-                        resultSet.getDouble("salary")
-                ));
-            }
-            employeeTable.setItems(employeeList);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void showEmployeeDetails(Employee employee) {
-        selectedEmployee = employee;
-        if (employee != null) {
-            nameField.setText(employee.getName());
-            salaryField.setText(String.valueOf(employee.getSalary()));
-
-            for (Department d : departmentComboBox.getItems()) {
-                if (d.getName().equals(employee.getDepartment())) {
-                    departmentComboBox.setValue(d);
-                    break;
-                }
-            }
-            addButton.setDisable(true);
-        } else {
-            clearFields();
-        }
-    }
-
-    @FXML
-    private void handleAddEmployee() {
-        if (!validateInput()) return;
-
-        String departmentName = departmentComboBox.getValue().getName();
-
-        String sql = "INSERT INTO employees(name, department, salary) VALUES(?,?,?)";
-        try (Connection conn = Database.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, nameField.getText());
-            pstmt.setString(2, departmentName);
-            pstmt.setDouble(3, Double.parseDouble(salaryField.getText()));
-            pstmt.executeUpdate();
-
-            loadEmployeeData();
-            clearFields();
-        } catch (SQLException | NumberFormatException e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
-    @FXML
-    private void handleUpdateEmployee() {
-        if (selectedEmployee == null || !validateInput()) return;
-
-        String departmentName = departmentComboBox.getValue().getName();
-
-        String sql = "UPDATE employees SET name = ?, department = ?, salary = ? WHERE id = ?";
-        try (Connection conn = Database.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, nameField.getText());
-            pstmt.setString(2, departmentName);
-            pstmt.setDouble(3, Double.parseDouble(salaryField.getText()));
-            pstmt.setInt(4, selectedEmployee.getId());
-            pstmt.executeUpdate();
-
-            loadEmployeeData();
-            clearFields();
-        } catch (SQLException | NumberFormatException e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
     @FXML
     private void handleDeleteEmployee() {
         if (selectedEmployee == null) return;
@@ -176,13 +160,13 @@ public class EmployeeController {
             loadEmployeeData();
             clearFields();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            e.printStackTrace();
         }
     }
 
     private boolean validateInput() {
-        if (nameField.getText().isEmpty() || departmentComboBox.getValue() == null || salaryField.getText().isEmpty()) {
-            System.out.println("All fields are required.");
+        if (nameField.getText().isEmpty() || departmentComboBox.getValue() == null || salaryField.getText().isEmpty() || joinDatePicker.getValue() == null) {
+            System.out.println("All fields, including Joining Date, are required.");
             return false;
         }
         return true;
@@ -193,6 +177,7 @@ public class EmployeeController {
         nameField.clear();
         departmentComboBox.setValue(null);
         salaryField.clear();
+        joinDatePicker.setValue(null);
         employeeTable.getSelectionModel().clearSelection();
         selectedEmployee = null;
         addButton.setDisable(false);

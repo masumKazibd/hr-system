@@ -4,95 +4,101 @@ import com.hrsystem.hrsystem.model.Employee;
 import com.hrsystem.hrsystem.util.Database;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DashboardController {
 
-    @FXML
-    private TableView<Employee> employeeTable;
-    @FXML
-    private TableColumn<Employee, Integer> idColumn;
-    @FXML
-    private TableColumn<Employee, String> nameColumn;
-    @FXML
-    private TableColumn<Employee, String> departmentColumn;
-    @FXML
-    private TableColumn<Employee, Double> salaryColumn;
-    @FXML
-    private Button manageButton;
+    @FXML private TableView<Employee> employeeTable;
+    @FXML private TableColumn<Employee, Integer> idColumn;
+    @FXML private TableColumn<Employee, String> nameColumn;
+    @FXML private TableColumn<Employee, String> departmentColumn;
+    @FXML private TableColumn<Employee, Double> salaryColumn;
+    @FXML private TableColumn<Employee, LocalDate> joinDateColumn; // NEW COLUMN
+    @FXML private ComboBox<String> policyComboBox;
+    @FXML private Button notificationButton;
 
     private ObservableList<Employee> employeeList = FXCollections.observableArrayList();
 
     @FXML
     public void initialize() {
+        // Setup table columns
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         departmentColumn.setCellValueFactory(new PropertyValueFactory<>("department"));
         salaryColumn.setCellValueFactory(new PropertyValueFactory<>("salary"));
+        joinDateColumn.setCellValueFactory(new PropertyValueFactory<>("joinDate")); // BIND NEW COLUMN
 
         loadEmployeeData();
+
+        // Setup policy selector
+        policyComboBox.setItems(FXCollections.observableArrayList("Yearly", "Half-Yearly"));
+        policyComboBox.setValue("Yearly"); // Default value
     }
 
     private void loadEmployeeData() {
-        // Clear existing data to avoid duplicates on refresh
         employeeList.clear();
-
-        Connection conn = Database.getConnection();
         String query = "SELECT * FROM employees ORDER BY id";
-        try {
-            PreparedStatement preparedStatement = conn.prepareStatement(query);
-            ResultSet resultSet = preparedStatement.executeQuery();
-
-            while (resultSet.next()) {
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(query);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Date joinSqlDate = rs.getDate("join_date");
+                LocalDate joinLocalDate = (joinSqlDate != null) ? joinSqlDate.toLocalDate() : null;
                 employeeList.add(new Employee(
-                        resultSet.getInt("id"),
-                        resultSet.getString("name"),
-                        resultSet.getString("department"),
-                        resultSet.getDouble("salary")
+                        rs.getInt("id"), rs.getString("name"),
+                        rs.getString("department"), rs.getDouble("salary"), joinLocalDate
                 ));
             }
             employeeTable.setItems(employeeList);
         } catch (SQLException e) {
             e.printStackTrace();
-            // Consider showing an error dialog to the user
         }
     }
 
     @FXML
-    private void handleManageEmployees(ActionEvent event) {
-        System.out.println("'Manage Employees' button clicked. Attempting to open window...");
+    private void handleNotifications() {
+        String policy = policyComboBox.getValue();
+        long monthsRequired = "Yearly".equals(policy) ? 12 : 6;
 
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/hrsystem/hrsystem/Employee.fxml"));
-            Parent root = loader.load();
+        List<String> employeesDue = new ArrayList<>();
 
-            Stage stage = new Stage();
-            stage.setTitle("Manage Employees");
-            stage.setScene(new Scene(root));
+        for (Employee emp : employeeList) {
+            if (emp.getJoinDate() == null) continue;
 
-            stage.initModality(Modality.APPLICATION_MODAL);
+            long monthsSinceJoined = ChronoUnit.MONTHS.between(emp.getJoinDate(), LocalDate.now());
 
-            stage.showAndWait();
-            loadEmployeeData();
-
-        } catch (IOException e) {
-            e.printStackTrace();
+            if (monthsSinceJoined >= monthsRequired) {
+                employeesDue.add(emp.getName() + " (Joined on " + emp.getJoinDate() + ")");
+            }
         }
+
+        showNotificationAlert(employeesDue);
+    }
+
+    private void showNotificationAlert(List<String> employeesDue) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Salary Increment Notifications");
+
+        if (employeesDue.isEmpty()) {
+            alert.setHeaderText("No employees are due for a salary increment.");
+            alert.setContentText("Checked based on the selected policy.");
+        } else {
+            alert.setHeaderText("The following employees are due for a salary increment:");
+            alert.getDialogPane().setContent(new ScrollPane(new Label(String.join("\n", employeesDue))));
+        }
+
+        alert.showAndWait();
     }
 }
