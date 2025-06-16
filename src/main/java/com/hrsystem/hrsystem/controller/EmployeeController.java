@@ -5,6 +5,7 @@ import com.hrsystem.hrsystem.util.Database;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -35,7 +36,11 @@ public class EmployeeController {
     @FXML
     private TextField salaryField;
 
+    @FXML
+    private Button addButton; // fx:id for the Add button
+
     private ObservableList<Employee> employeeList = FXCollections.observableArrayList();
+    private Employee selectedEmployee = null; // To store the currently selected employee
 
     @FXML
     public void initialize() {
@@ -44,14 +49,19 @@ public class EmployeeController {
         departmentColumn.setCellValueFactory(new PropertyValueFactory<>("department"));
         salaryColumn.setCellValueFactory(new PropertyValueFactory<>("salary"));
         loadEmployeeData();
+
+        // Add a listener to handle table selection changes
+        employeeTable.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldValue, newValue) -> showEmployeeDetails(newValue));
     }
 
     private void loadEmployeeData() {
-        Connection conn = Database.getConnection();
-        String query = "SELECT * FROM employees";
-        try {
-            PreparedStatement preparedStatement = conn.prepareStatement(query);
-            ResultSet resultSet = preparedStatement.executeQuery();
+        employeeList.clear();
+        String query = "SELECT * FROM employees ORDER BY id";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement preparedStatement = conn.prepareStatement(query);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
+
             while (resultSet.next()) {
                 employeeList.add(new Employee(
                         resultSet.getInt("id"),
@@ -66,33 +76,110 @@ public class EmployeeController {
         }
     }
 
+    /**
+     * Fills the text fields with the data from the selected employee.
+     * @param employee The employee selected from the table.
+     */
+    private void showEmployeeDetails(Employee employee) {
+        selectedEmployee = employee;
+        if (employee != null) {
+            nameField.setText(employee.getName());
+            departmentField.setText(employee.getDepartment());
+            salaryField.setText(String.valueOf(employee.getSalary()));
+            addButton.setDisable(true); // Disable Add button when an employee is selected
+        } else {
+            clearFields();
+        }
+    }
+
     @FXML
     private void handleAddEmployee() {
-        String name = nameField.getText();
-        String department = departmentField.getText();
-        double salary = Double.parseDouble(salaryField.getText());
+        if (!validateInput()) return;
 
         String sql = "INSERT INTO employees(name, department, salary) VALUES(?,?,?)";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-        try {
-            Connection conn = Database.getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, name);
-            pstmt.setString(2, department);
-            pstmt.setDouble(3, salary);
+            pstmt.setString(1, nameField.getText());
+            pstmt.setString(2, departmentField.getText());
+            pstmt.setDouble(3, Double.parseDouble(salaryField.getText()));
             pstmt.executeUpdate();
 
-            employeeList.clear();
             loadEmployeeData();
             clearFields();
+        } catch (SQLException | NumberFormatException e) {
+            System.out.println(e.getMessage());
+        }
+    }
 
+    @FXML
+    private void handleUpdateEmployee() {
+        if (selectedEmployee == null) {
+            System.out.println("No employee selected. Please select an employee from the table to update.");
+            return;
+        }
+        if (!validateInput()) return;
+
+        String sql = "UPDATE employees SET name = ?, department = ?, salary = ? WHERE id = ?";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, nameField.getText());
+            pstmt.setString(2, departmentField.getText());
+            pstmt.setDouble(3, Double.parseDouble(salaryField.getText()));
+            pstmt.setInt(4, selectedEmployee.getId());
+            pstmt.executeUpdate();
+
+            loadEmployeeData();
+            clearFields();
+        } catch (SQLException | NumberFormatException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleDeleteEmployee() {
+        if (selectedEmployee == null) {
+            System.out.println("No employee selected. Please select an employee from the table to delete.");
+            return;
+        }
+
+        String sql = "DELETE FROM employees WHERE id = ?";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, selectedEmployee.getId());
+            pstmt.executeUpdate();
+
+            loadEmployeeData();
+            clearFields();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
-        }   
+        }
     }
-    private void clearFields() {
+
+    /**
+     * Validates that the input fields are not empty.
+     * @return true if input is valid, false otherwise.
+     */
+    private boolean validateInput() {
+        if (nameField.getText().isEmpty() || departmentField.getText().isEmpty() || salaryField.getText().isEmpty()) {
+            System.out.println("All fields are required.");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Clears the input text fields and the table selection.
+     */
+    @FXML
+    public void clearFields() {
         nameField.clear();
         departmentField.clear();
         salaryField.clear();
+        employeeTable.getSelectionModel().clearSelection();
+        selectedEmployee = null;
+        addButton.setDisable(false); // Re-enable Add button
     }
 }
