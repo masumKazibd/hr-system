@@ -18,17 +18,14 @@
                 <TableColumn fx:id="nameColumn" prefWidth="175.0" text="Name" />
                 <TableColumn fx:id="departmentColumn" prefWidth="175.0" text="Department" />
                 <TableColumn fx:id="salaryColumn" prefWidth="150.0" text="Salary" />
-                <!-- NEW COLUMN ADDED HERE -->
                 <TableColumn fx:id="joinDateColumn" prefWidth="150.0" text="Joining Date" />
             </columns>
         </TableView>
         <Label layoutX="40.0" layoutY="65.0" text="Employee Snapshot:">
             <font> <Font size="14.0" /> </font>
         </Label>
-        <HBox alignment="CENTER_RIGHT" layoutX="460.0" layoutY="60.0" spacing="10.0">
+        <HBox alignment="CENTER_RIGHT" layoutX="570.0" layoutY="60.0" spacing="10.0">
             <children>
-                <Label text="Increment Policy:" />
-                <ComboBox fx:id="policyComboBox" />
                 <Button fx:id="notificationButton" onAction="#handleNotifications" text="Check Increments" />
             </children>
         </HBox>

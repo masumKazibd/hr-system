@@ -25,9 +25,9 @@ public class DashboardController {
     @FXML private TableColumn<Employee, String> nameColumn;
     @FXML private TableColumn<Employee, String> departmentColumn;
     @FXML private TableColumn<Employee, Double> salaryColumn;
-    @FXML private TableColumn<Employee, LocalDate> joinDateColumn; // NEW COLUMN
-    @FXML private ComboBox<String> policyComboBox;
+    @FXML private TableColumn<Employee, LocalDate> joinDateColumn;
     @FXML private Button notificationButton;
+    // The policyComboBox has been removed as it is no longer in the FXML
 
     private ObservableList<Employee> employeeList = FXCollections.observableArrayList();
 
@@ -38,13 +38,9 @@ public class DashboardController {
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         departmentColumn.setCellValueFactory(new PropertyValueFactory<>("department"));
         salaryColumn.setCellValueFactory(new PropertyValueFactory<>("salary"));
-        joinDateColumn.setCellValueFactory(new PropertyValueFactory<>("joinDate")); // BIND NEW COLUMN
+        joinDateColumn.setCellValueFactory(new PropertyValueFactory<>("joinDate"));
 
         loadEmployeeData();
-
-        // Setup policy selector
-        policyComboBox.setItems(FXCollections.observableArrayList("Yearly", "Half-Yearly"));
-        policyComboBox.setValue("Yearly"); // Default value
     }
 
     private void loadEmployeeData() {
@@ -56,9 +52,15 @@ public class DashboardController {
             while (rs.next()) {
                 Date joinSqlDate = rs.getDate("join_date");
                 LocalDate joinLocalDate = (joinSqlDate != null) ? joinSqlDate.toLocalDate() : null;
+
+                // **FIX:** Now loading the increment_policy and using the correct constructor
                 employeeList.add(new Employee(
-                        rs.getInt("id"), rs.getString("name"),
-                        rs.getString("department"), rs.getDouble("salary"), joinLocalDate
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("department"),
+                        rs.getDouble("salary"),
+                        joinLocalDate,
+                        rs.getString("increment_policy")
                 ));
             }
             employeeTable.setItems(employeeList);
@@ -69,18 +71,19 @@ public class DashboardController {
 
     @FXML
     private void handleNotifications() {
-        String policy = policyComboBox.getValue();
-        long monthsRequired = "Yearly".equals(policy) ? 12 : 6;
-
         List<String> employeesDue = new ArrayList<>();
 
         for (Employee emp : employeeList) {
-            if (emp.getJoinDate() == null) continue;
+            // Skip if join date or policy is missing
+            if (emp.getJoinDate() == null || emp.getIncrementPolicy() == null) continue;
+
+            // **FIX:** Logic now uses the individual employee's policy
+            long monthsRequired = "Yearly".equals(emp.getIncrementPolicy()) ? 12 : 6;
 
             long monthsSinceJoined = ChronoUnit.MONTHS.between(emp.getJoinDate(), LocalDate.now());
 
             if (monthsSinceJoined >= monthsRequired) {
-                employeesDue.add(emp.getName() + " (Joined on " + emp.getJoinDate() + ")");
+                employeesDue.add(emp.getName() + " (Policy: " + emp.getIncrementPolicy() + ")");
             }
         }
 
@@ -93,7 +96,7 @@ public class DashboardController {
 
         if (employeesDue.isEmpty()) {
             alert.setHeaderText("No employees are due for a salary increment.");
-            alert.setContentText("Checked based on the selected policy.");
+            alert.setContentText("Checked each employee's individual policy.");
         } else {
             alert.setHeaderText("The following employees are due for a salary increment:");
             alert.getDialogPane().setContent(new ScrollPane(new Label(String.join("\n", employeesDue))));

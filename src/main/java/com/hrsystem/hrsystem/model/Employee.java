@@ -9,13 +9,15 @@ public class Employee {
     private String department;
     private double salary;
     private LocalDate joinDate;
+    private String incrementPolicy;
 
-    public Employee(int id, String name, String department, double salary, LocalDate joinDate) {
+    public Employee(int id, String name, String department, double salary, LocalDate joinDate, String incrementPolicy) {
         this.id = id;
         this.name = name;
         this.department = department;
         this.salary = salary;
         this.joinDate = joinDate;
+        this.incrementPolicy = incrementPolicy;
     }
 
     // --- Getters and Setters ---
@@ -29,4 +31,6 @@ public class Employee {
     public void setSalary(double salary) { this.salary = salary; }
     public LocalDate getJoinDate() { return joinDate; }
     public void setJoinDate(LocalDate joinDate) { this.joinDate = joinDate; }
+    public String getIncrementPolicy() { return incrementPolicy; }
+    public void setIncrementPolicy(String incrementPolicy) { this.incrementPolicy = incrementPolicy; }
 }
