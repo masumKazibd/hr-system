@@ -10,6 +10,7 @@
 <?import javafx.scene.text.Font?>
 
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.ComboBox?>
 <AnchorPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.hrsystem.hrsystem.controller.EmployeeController">
     <children>
         <TableView fx:id="employeeTable" layoutX="25.0" layoutY="25.0" prefHeight="550.0" prefWidth="450.0">
@@ -30,7 +31,7 @@
                 <Label text="Name:" />
                 <TextField fx:id="nameField" />
                 <Label text="Department:" />
-                <TextField fx:id="departmentField" />
+                <ComboBox fx:id="departmentComboBox" prefWidth="275.0" />
                 <Label text="Salary:" />
                 <TextField fx:id="salaryField" />
                 <Button fx:id="addButton" onAction="#handleAddEmployee" prefHeight="30.0" prefWidth="275.0" text="Add Employee" />

@@ -1,11 +1,13 @@
 package com.hrsystem.hrsystem.controller;
 
+import com.hrsystem.hrsystem.model.Department;
 import com.hrsystem.hrsystem.model.Employee;
 import com.hrsystem.hrsystem.util.Database;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -32,15 +34,15 @@ public class EmployeeController {
     @FXML
     private TextField nameField;
     @FXML
-    private TextField departmentField;
+    private ComboBox<Department> departmentComboBox;
     @FXML
     private TextField salaryField;
-
     @FXML
-    private Button addButton; // fx:id for the Add button
+    private Button addButton;
 
     private ObservableList<Employee> employeeList = FXCollections.observableArrayList();
-    private Employee selectedEmployee = null; // To store the currently selected employee
+    private ObservableList<Department> departmentList = FXCollections.observableArrayList();
+    private Employee selectedEmployee = null;
 
     @FXML
     public void initialize() {
@@ -48,11 +50,32 @@ public class EmployeeController {
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         departmentColumn.setCellValueFactory(new PropertyValueFactory<>("department"));
         salaryColumn.setCellValueFactory(new PropertyValueFactory<>("salary"));
+
+        loadDepartmentData();
+        departmentComboBox.setItems(departmentList);
+
         loadEmployeeData();
 
-        // Add a listener to handle table selection changes
         employeeTable.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> showEmployeeDetails(newValue));
+    }
+
+    private void loadDepartmentData() {
+        departmentList.clear();
+        String query = "SELECT * FROM departments ORDER BY name";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement preparedStatement = conn.prepareStatement(query);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
+
+            while (resultSet.next()) {
+                departmentList.add(new Department(
+                        resultSet.getInt("id"),
+                        resultSet.getString("name")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void loadEmployeeData() {
@@ -76,17 +99,19 @@ public class EmployeeController {
         }
     }
 
-    /**
-     * Fills the text fields with the data from the selected employee.
-     * @param employee The employee selected from the table.
-     */
     private void showEmployeeDetails(Employee employee) {
         selectedEmployee = employee;
         if (employee != null) {
             nameField.setText(employee.getName());
-            departmentField.setText(employee.getDepartment());
             salaryField.setText(String.valueOf(employee.getSalary()));
-            addButton.setDisable(true); // Disable Add button when an employee is selected
+
+            for (Department d : departmentComboBox.getItems()) {
+                if (d.getName().equals(employee.getDepartment())) {
+                    departmentComboBox.setValue(d);
+                    break;
+                }
+            }
+            addButton.setDisable(true);
         } else {
             clearFields();
         }
@@ -96,12 +121,14 @@ public class EmployeeController {
     private void handleAddEmployee() {
         if (!validateInput()) return;
 
+        String departmentName = departmentComboBox.getValue().getName();
+
         String sql = "INSERT INTO employees(name, department, salary) VALUES(?,?,?)";
         try (Connection conn = Database.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, nameField.getText());
-            pstmt.setString(2, departmentField.getText());
+            pstmt.setString(2, departmentName);
             pstmt.setDouble(3, Double.parseDouble(salaryField.getText()));
             pstmt.executeUpdate();
 
@@ -114,18 +141,16 @@ public class EmployeeController {
 
     @FXML
     private void handleUpdateEmployee() {
-        if (selectedEmployee == null) {
-            System.out.println("No employee selected. Please select an employee from the table to update.");
-            return;
-        }
-        if (!validateInput()) return;
+        if (selectedEmployee == null || !validateInput()) return;
+
+        String departmentName = departmentComboBox.getValue().getName();
 
         String sql = "UPDATE employees SET name = ?, department = ?, salary = ? WHERE id = ?";
         try (Connection conn = Database.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, nameField.getText());
-            pstmt.setString(2, departmentField.getText());
+            pstmt.setString(2, departmentName);
             pstmt.setDouble(3, Double.parseDouble(salaryField.getText()));
             pstmt.setInt(4, selectedEmployee.getId());
             pstmt.executeUpdate();
@@ -139,10 +164,7 @@ public class EmployeeController {
 
     @FXML
     private void handleDeleteEmployee() {
-        if (selectedEmployee == null) {
-            System.out.println("No employee selected. Please select an employee from the table to delete.");
-            return;
-        }
+        if (selectedEmployee == null) return;
 
         String sql = "DELETE FROM employees WHERE id = ?";
         try (Connection conn = Database.getConnection();
@@ -158,28 +180,21 @@ public class EmployeeController {
         }
     }
 
-    /**
-     * Validates that the input fields are not empty.
-     * @return true if input is valid, false otherwise.
-     */
     private boolean validateInput() {
-        if (nameField.getText().isEmpty() || departmentField.getText().isEmpty() || salaryField.getText().isEmpty()) {
+        if (nameField.getText().isEmpty() || departmentComboBox.getValue() == null || salaryField.getText().isEmpty()) {
             System.out.println("All fields are required.");
             return false;
         }
         return true;
     }
 
-    /**
-     * Clears the input text fields and the table selection.
-     */
     @FXML
     public void clearFields() {
         nameField.clear();
-        departmentField.clear();
+        departmentComboBox.setValue(null);
         salaryField.clear();
         employeeTable.getSelectionModel().clearSelection();
         selectedEmployee = null;
-        addButton.setDisable(false); // Re-enable Add button
+        addButton.setDisable(false);
     }
 }
